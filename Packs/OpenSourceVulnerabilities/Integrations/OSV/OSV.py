@@ -10,7 +10,7 @@ class Client(BaseClient):
     def osv_get_vuln_by_id_request(self, id_):
         headers = self._headers
 
-        response = self._http_request("get", f"v1new/vulns/{id_}", headers=headers)
+        response = self._http_request("get", f"v1/vulns/{id_}", headers=headers)
 
         return response
 
@@ -18,14 +18,14 @@ class Client(BaseClient):
         data = assign_params(commit=v1query_commit)
         headers = self._headers
 
-        response = self._http_request("post", "v1new/query", json_data=data, headers=headers)
+        response = self._http_request("post", "v1/query", json_data=data, headers=headers)
 
         return response
 
     def osv_query_affected_by_package_request(self, v1query_version, v1query_package, v1query_ecosystem):
         data = assign_params(version=v1query_version, package={"name": v1query_package, "ecosystem": v1query_ecosystem})
         headers = self._headers
-        response = self._http_request("post", "v1new/query", json_data=data, headers=headers)
+        response = self._http_request("post", "v1/query", json_data=data, headers=headers)
 
         return response
 
