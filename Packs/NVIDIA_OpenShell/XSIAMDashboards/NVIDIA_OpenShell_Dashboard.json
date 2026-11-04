@@ -183,6 +183,7 @@
                     ]
                 }
             ],
+            "default_dashboard_id": 1,
             "global_id": "NVIDIA_OpenShell_Dashboard"
         }
     ],

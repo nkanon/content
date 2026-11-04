@@ -60,32 +60,34 @@ For more information, see this [doc](https://docs-cortex.paloaltonetworks.com/r/
     openshell settings set --global --key ocsf_json_enabled --value true
     ```
 
-2. Collect the supervisor container logs (recommended). Each supervisor writes one line per event to its container stderr, in the format `<UTC timestamp> OCSF-JSON <compact OCSF JSON>`. This works regardless of writable log storage. Read it through the platform log interface or a container log collector:
+2. Send each OCSF event to the HTTP Log Collector as a plain JSON object, using the API URL and token from the Cortex XSIAM side. Use one of these sources:
 
-    ```shell
-    docker logs <supervisor-container>
-    podman logs <supervisor-container>
-    kubectl logs <supervisor-pod> -c supervisor
-    ```
+    * **Supervisor container logs (recommended).** Each supervisor writes one line per event to its container stderr, in the format `<UTC timestamp> OCSF-JSON <compact OCSF JSON>`. This works regardless of writable log storage. Read it through the platform log interface or a container log collector:
 
-    Supervisors also write a shorthand copy of each event and diagnostic lines to stderr. Configure the log collector to forward only records whose line contains `OCSF-JSON`, as NVIDIA recommends; shorthand and diagnostic lines, if forwarded, are stored in the dataset but not modeled. Send the records to the HTTP Log Collector using the API URL and token from the Cortex XSIAM side. Each record must be a JSON object, such as a Docker json-file record (`{"log":"<line>","stream":"stderr","time":"..."}`) or the line encoded as a JSON string.
+        ```shell
+        docker logs <supervisor-container>
+        podman logs <supervisor-container>
+        kubectl logs <supervisor-pod> -c supervisor
+        ```
 
-3. Alternatively, forward the supervisor JSONL files. Each supervisor also writes OCSF JSONL to `/var/log/openshell-ocsf.YYYY-MM-DD.log` in its own filesystem. The location depends on the compute driver:
+        As NVIDIA recommends, configure the log collector to select only lines containing `OCSF-JSON` and to decode everything after the following space as JSON. Forward that JSON object, not the whole log line. This also skips the shorthand copy of each event and the diagnostic lines.
 
-    | Compute driver  | Supervisor log location                                   |
-    |:----------------|:----------------------------------------------------------|
-    | Kubernetes      | `/var/log` in the supervisor pod's `supervisor` container |
-    | Docker / Podman | `/var/log` in the supervisor container                    |
-    | VM              | `/var/log` on the host running the supervisor             |
+    * **Supervisor JSONL files.** Each supervisor also writes one OCSF JSON object per line to `/var/log/openshell-ocsf.YYYY-MM-DD.jsonl` (`.log` before OpenShell 0.1.3) in its own filesystem. The location depends on the compute driver:
 
-    On Kubernetes (emptyDir) and Docker / Podman (tmpfs) these files are on ephemeral storage, and the supervisor image has no shell or `tar`.
+        | Compute driver  | Supervisor log location                                   |
+        |:----------------|:----------------------------------------------------------|
+        | Kubernetes      | `/var/log` in the supervisor pod's `supervisor` container |
+        | Docker / Podman | `/var/log` in the supervisor container                    |
+        | VM              | `/var/log` on the host running the supervisor             |
+
+        On Kubernetes (emptyDir) and Docker / Podman (tmpfs) these files are on ephemeral storage, and the supervisor image has no shell or `tar`.
 
 For details, refer to the [OpenShell Accessing Logs](https://docs.nvidia.com/openshell/latest/observability/accessing-logs) and [OCSF JSON Export](https://docs.nvidia.com/openshell/latest/observability/ocsf-json-export) documentation.
 
 #### Remarks
 
-* The HTTP Log Collector rejects records that are not JSON. Send one JSON object per record.
+* The HTTP Log Collector rejects records that are not JSON. Send one OCSF JSON object per record. Records without an OCSF `class_uid` are stored but not modeled.
 * Console output is best-effort: it uses a bounded queue of 1,024 lines, and new lines are dropped when it is full. Collect continuously.
-* Sandbox attribution relies on the OCSF `container` object. Keep the export at OCSF v1.8.0; downgrading to an earlier version removes it.
+* Sandbox attribution uses `device.container` on supervisor records and `unmapped.sandbox_id` / `unmapped.sandbox_name` on gateway records (OpenShell 0.1.8 and later), and the top-level `container` object on earlier versions.
 
 </~XSIAM>
